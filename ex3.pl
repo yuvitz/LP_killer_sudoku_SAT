@@ -525,10 +525,12 @@ map_loop1(Map,[Rowb|Restb],I,Length):-
     % append(Row2,Rows2,Board),
     map_loop2(Row,Rowb,I,1,Length),
     map_loop1(Rows,Restb,N_i,Length).
-map_loop2([Cell],[Cellb],I,J,J):- Cell= (cell(I,J)= Value), Cellb=Value.
+map_loop2([Cell],[Cellb],I,J,J):- 
+    length(Value,9), Cell= (cell(I,J)= Value), Cellb=Value.
 map_loop2([Cell|Row],[Cellb|Rowb],I,J,Length):-
     J<Length,
     N_j is J+1,
+    length(Value,9),
     Cell = (cell(I,J)= Value),
     Cellb = Value, 
     map_loop2(Row,Rowb,I,N_j,Length).
@@ -591,7 +593,7 @@ killer_moves_loop1(Board,I,Size,CNF):-
     killer_moves_loop1(Board,N_i,Size,CNF2),
     append(CNF1,CNF2,CNF).
 
-killer_moves_loop2(_Board,_I,Size,Size,_CNF).
+killer_moves_loop2(_Board,_I,Size,Size,[]).
 killer_moves_loop2(Board,I,J,Size,CNF):-
     J<Size,
     N_j is J+1,
