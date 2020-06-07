@@ -424,6 +424,7 @@ exactly_one_in_cell2([Cell|Cells],CNF):-
 
 cnf_rows_loop([Row],9,CNF):- take_nth_bit(Row,9,List), exactly_one(List,CNF).
 cnf_rows_loop([Row],Count,CNF):- 
+    Count<9,
     take_nth_bit(Row,Count,List),
     exactly_one(List,CNF1),
     N_count is Count+1,
