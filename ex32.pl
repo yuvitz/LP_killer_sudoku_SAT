@@ -399,17 +399,17 @@ encode_killer(Instance, Map, CNF):-
     cnf(Board,CNF).
 
 cnf(Board,CNF):-
-    cnf_rows_loop(Board,1,CNF).
-    % transpose(Board,Cols),
-    % cnf_rows_loop(Cols,1,CNF2),
-    % append(CNF1,CNF2,CNF3),
-    % blocks_to_rows(Board,9,3,Blocks),
-    % cnf_rows_loop(Blocks,1,CNF4),
-    % append(CNF3,CNF4,CNF5),
-    % killer_moves_loop1(Board,1,9,CNF6),
-    % append(CNF5,CNF6,CNF7),
-    % exactly_one_in_cell(Board,CNF8),
-    % append(CNF7,CNF8,CNF).
+    cnf_rows_loop(Board,1,CNF1),
+    transpose(Board,Cols),
+    cnf_rows_loop(Cols,1,CNF2),
+    append(CNF1,CNF2,CNF3),
+    blocks_to_rows(Board,9,3,Blocks),
+    cnf_rows_loop(Blocks,1,CNF4),
+    append(CNF3,CNF4,CNF5),
+    killer_moves_loop1(Board,1,9,CNF6),
+    append(CNF5,CNF6,CNF7),
+    exactly_one_in_cell(Board,CNF8),
+    append(CNF7,CNF8,CNF).
 
 exactly_one_in_cell([],[]).
 exactly_one_in_cell([Row|Rows],CNF):-
