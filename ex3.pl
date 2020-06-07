@@ -1,84 +1,9 @@
+user:file_search_path(sat, '/home/yuval/Documents/PL/satsolver').
+:- use_module(sat(satsolver)).
+% bunch of helper predicates
 
-% %% Task1 %%
-% %sudoku_propagate(+,-)
-% sudoku_propagate(Instance, List):-
-%     Instance = sudoku(SqrtN, Hints),
-%     N is SqrtN**2,
-%     length(Board,N),
-%     initiate_board(Board,N),
-%     put_hints(Hints,Board),
-%     % List is Board.
-%     check_rows_constraints(Board,1,List_rows,N),
-
-%     check_cols_constraints(Board,List_cols,N),
-%     check_boxes_constraints(Board,N,SqrtN,Boxes_list),
-
-%     append(List_rows,List_cols,T_list),
-%     append(T_list,Boxes_list,List).
-
-% initiate_board([],_N).
-% initiate_board([Row|Rows],N):-
-%     length(Row,N),
-%     initiate_board(Rows,N).
-
-% % check_cols(N,_Board,N,_List).
-% % check_cols(Row_count,Board,N,List),
-% %     nth1(Row_count,Board,Row),
-
-% check_rows_constraints([],_Row_index,[],_N).
-% check_rows_constraints([Row|Rest],Row_index,Rows_list,N):-
-%     Next_row is Row_index+1,
-%     (check_row(Row,Row_index,N,Constraint)->
-%     check_rows_constraints(Rest,Next_row,Rest_list,N),
-%     append([Constraint],Rest_list,Rows_list);
-%     check_rows_constraints(Rest,Next_row,Rows_list,N)).
-
-
-% % check_row([],_Row_list,[],Col,N).
-% % check_row([A|As],Row_list,Nums_in_row,Col,Vars,N):-
-% %     % Ncol is Col+1,
-% %     \+Vars>1,
-% %     nonvar(A)-> Num=[A], N_vars is Vars; (Num=[], N_vars is Vars+1),
-% %     check_row(As,)
-% check_row(Row,Row_index,N,Constraint):-
-%     % between(1,N,Val),
-%     once(findnsols(2,Val,try_row(Row,Val,N),Sols)),
-%     length(Sols,1),
-%     Sols=[Sol],
-%     put_in_row(Row,Row_index,Sol,1,Constraint).
-%     % Out = Row.
-
-% try_row(Row,Val,N):-
-%     between(1,N,Val),
-%     once(not_in_row(Row,Val)).
-% not_in_row([],_Val).
-% not_in_row([A|As],Val):-
-%     (nonvar(A)-> A\=Val; A is Val),
-%     not_in_row(As,Val).    
-% put_in_row([A|As],Row_index,Val,Col_index,Constraint):-
-%     (var(A)-> 
-%     A is Val,
-%     Constraint = (cell(Row_index,Col_index)=Val)
-%     ;
-%     Next_Col is Col_index+1,
-%     put_in_row(As,Row_index,Val,Next_Col,Constraint)).
-
-% % %%%
-% % check_cols_constraints([],_Row_index,[],_N).
-% check_cols_constraints(Rows,Cols_list,N):-
-%     transpose(Rows,Cols),
-%     check_rows_constraints(Cols,1,Cols_list,N),
-%     transpose(Cols,Rows).
-
-% check_boxes_constraints(Board,N,SqrtN,Boxes_list):-
-%     blocks_to_rows(Board,N,SqrtN,Boxes),
-%     check_rows_constraints(Boxes,1,Boxes_list,N).
-%     % blocks_to_rows(Boxes,N,SqrtN,Board).
-
-% user:file_search_path(sat, '/home/hadar/Desktop/plsatsolver_src/satsolver').
-% :- use_module(sat(satsolver)).
-%*************sudoku_propagate**************
-% remove duplicates taken from https://stackoverflow.com/questions/39435709/how-to-remove-duplicates-from-a-list-in-swi-prolog
+% the code below has take from:
+% https://stackoverflow.com/questions/39435709/how-to-remove-duplicates-from-a-list-in-swi-prolog
 delete3(_,[],[]).
 delete3(X,[X|T],R):- delete3(X,T,R).
 delete3(X,[H|T],[H|R]) :- delete3(X,T,R).
@@ -88,125 +13,132 @@ remove_duplicates([H|T], [H|R]) :-
     member(H,T),!,
     delete3(H,T,R1),
     remove_duplicates(R1,R).
-
 remove_duplicates([H|T],[H|R]):-
     remove_duplicates(T,R).
-
-sudoku_propagate(Instance, List):-
-    sudoku_propagate(Instance,[],List1,[cell(1,1)=_],0,_ExpC),
-    append(List1,List).
-
-% i check by the flag if in the previous rownd some caonstraints has added
-sudoku_propagate(Instance,PrevL,List,[cell(0,0)=A],Flag,ExpC):-
-Flag>0->sudoku_propagate(Instance,PrevL,List,[cell(1,1)=A],0,ExpC);
-Flag=:=0->List=[],ExpC=[].
- 
-sudoku_propagate(sudoku(Sqr,Instance),PrevL,List,Pos,Flag,ExpC):-
-    (Pos\= [cell(0,0)=_],
-    append(Instance,PrevL,AllList),
-    \+allready_checked(AllList,Pos),
-    constraints(AllList,Sqr,Pos,Constraints_list,ExplainCons),!,
-    remove_duplicates(Constraints_list,Cons_nodup),!,
-    length(Cons_nodup,N_curr),
-    pow(Sqr,2,N),
-    N_1 is N-1,
-    find_next_pos(AllList,Pos,NextPos,N),
-    N_1==N_curr)->                                              %if ther is n-1 constraints
-    (find_assignment(Cons_nodup,N,Pos),
-    ExpC=[ExplainCons->Pos|ResExp],
-    Nflag is Flag+1,
-    append(PrevL,Pos,NewPrev),
-    List=[Pos|ResList],
-    sudoku_propagate(sudoku(Sqr,Instance),NewPrev,ResList,NextPos,Nflag,ResExp));
-    (Pos\= [cell(0,0)=_],
-    append(Instance,PrevL,AllList),
-    pow(Sqr,2,N),
-    find_next_pos(AllList,Pos,NextPos,N),
-    sudoku_propagate(sudoku(Sqr,Instance),PrevL,List,NextPos,Flag,ExpC)).
-
-%find next position to continue
-find_next_pos(AllList,[cell(I1,J1)=A1],Pos,N):-
-    J1=:=N,I1=:=N->Pos=[cell(0,0)=_B];          %if we are in the last cell, flag for finish (0,0)
-    J1=:=N-> NextJ is 1 ,NextI is I1+1,(\+allready_checked(AllList,cell(NextI,NextJ)=_)-> Pos=[cell(NextI,NextJ)=_];
-    (find_next_pos(AllList,[cell(NextI,NextJ)=A1],Pos,N)));   %if we in the last col we move to next row
-    J1<N-> Next is J1+1 ,(\+allready_checked(AllList,[cell(I1,Next)=A1])-> Pos=[cell(I1,Next)=_C];
-    (find_next_pos(AllList,[cell(I1,Next)=_],Pos,N))).
-    
-
-%find the assighnment
-find_assignment(Cons_nodup,N,[cell(_I2,_J2)=A2]):-
-    numlist(1,N,L),
-    delete_elements(Cons_nodup,L,A2).
-
-delete_elements([X|Cons_nodup],L,A2):-
-    delete(L,X,Res),
-    delete_elements(Cons_nodup,Res,A2).
-delete_elements([],[A2],A2).    
-
-%find the constraints for the current cell   
-constraints([cell(I1,J1)=A1|Res1],Sqr,[cell(I2,J2)=A2],[A1|Constraints_list],[cell(I1,J1)=A1|ExplainCons]):-
-    (I1==I2;J1==J2;find_box(I1,J1,I2,J2,Sqr)),             %check if it is in the row or col or box
-    constraints(Res1,Sqr,[cell(I2,J2)=A2],Constraints_list,ExplainCons).
-
-constraints([],_Sqr,_Pos,[],[]).
-constraints([cell(I1,J1)=_A1|Res1],Sqr,[cell(I2,J2)=A2],Constraints_list,ExplainCons):-
-    (I1\=I2,J1\=J2,\+find_box(I1,J1,I2,J2,Sqr)),             %check if it is in the row or col or box
-    constraints(Res1,Sqr,[cell(I2,J2)=A2],Constraints_list,ExplainCons).
-
-find_box(I1,J1,RowP,ColP,Sqr):-
-    find_box_helper(1,Sqr,RowP,Sqr,Row_box),
-    find_box_helper(1,Sqr,ColP,Sqr,Col_box),
-    member(I1,Row_box),member(J1,Col_box).
-
-find_box_helper(Start,End,I1,Sqr,Row_box):-
-    (numlist(Start,End,L1),member(I1,L1))->Row_box=L1;
-    NewStart is Start+Sqr,NewEnd is End+Sqr ,find_box_helper(NewStart,NewEnd,I1,Sqr,Row_box). 
-
-%finde if we allready have assigment for the current cell
-allready_checked([],[_Pos]):-false.
-allready_checked([cell(I1,J1)=_A1|_Res1],[cell(I2,J2)=_A2]):-
-    I1==I2,J1==J2.
-
-allready_checked([cell(I1,J1)=_A1|Res1],[cell(I2,J2)=A2]):-
-        (I1\=I2;J1\=J2) -> allready_checked(Res1,[cell(I2,J2)=A2]).
-    
-%*****************sudoku_propagate_explain(Instance, Explain)***********************
-sudoku_propagate_explain(sudoku(Sqr, Hints), Explain):-
-    sudoku_propagate(sudoku(Sqr, Hints),[],_List1,[cell(1,1)=_A],0,Exp),
-    pow(Sqr,2,N),
-    no_dup_explain(Exp,Explain,N).
-
-%remove duplcates from the explain
-no_dup_explain([],[],_N).
-no_dup_explain([Cons_list->Pos|Res1],No_dup_exp,N):-
-    length(Cons_list,Len),
-    Len\=N-1,numlist(1,N,NumList),no_dup(Cons_list,New_ConsList,NumList),
-    No_dup_exp=[New_ConsList->Pos|Res2],no_dup_explain(Res1,Res2,N). 
-
-no_dup_explain([Cons_list->Pos|Res1],No_dup_exp,N):-
-    length(Cons_list,Len),
-    Len==N-1,No_dup_exp=[Cons_list->Pos|Res2],no_dup_explain(Res1,Res2,N).
-
-
-no_dup([],[],_).
-no_dup([cell(P1,P2)=A|Cons_list],New_ConsList,NumList):-
-    (member(A,NumList)->
-    delete(NumList,A,NewNumlist),
-    New_ConsList =[cell(P1,P2)=A|Res],
-    no_dup(Cons_list,Res,NewNumlist));
-    \+member(A,NumList)->no_dup(Cons_list,New_ConsList,NumList).    
-
 % the code below has take from:
 % https://stackoverflow.com/questions/20131904/check-if-all-numbers-in-a-list-are-different-in-prolog
 all_diff(L) :- \+ (append(_,[X|R],L), memberchk(X,R)).
 % the code below has take from:
-%   https://stackoverflow.com/questions/4280986/how-to-transpose-a-matrix-in-prolog
+% https://stackoverflow.com/questions/4280986/how-to-transpose-a-matrix-in-prolog
 transpose([[]|_],[]).
 transpose(Matrix, [Row|Rows]):-
     transpose_1st_col(Matrix, Row, RestMatrix),
     transpose(RestMatrix, Rows).
 transpose_1st_col([], [], []).
 transpose_1st_col([[H|T]|Rows], [H|Hs], [T|Ts]) :- transpose_1st_col(Rows, Hs, Ts).
+% the code below has take from:
+% https://stackoverflow.com/questions/30464504/how-to-find-the-nth-element-of-a-list-in-prolog
+match([H|_],0,H) :-
+    !.
+match([_|T],N,H) :-
+    N > 0, %add for loop prevention
+    N1 is N-1,
+    match(T,N1,H).
+% %% Task1 %%
+% %sudoku_propagate(+,-)
+sudoku_propagate(Instance, List):-
+    sudoku_propagate_help(Instance,[],Lists,[cell(1,1)=_],0,_ExpC),
+    append(Lists,List).
+
+sudoku_propagate_help(Instance,PrevL,Lists,[cell(0,0)=A],Found,ExpC):-
+    (Found>0->
+    sudoku_propagate_help(Instance,PrevL,Lists,[cell(1,1)=A],0,ExpC);
+    Found=:=0->Lists=[],ExpC=[]).
+ 
+sudoku_propagate_help(sudoku(SqrtN,Instance),PrevL,Lists,Loc,Found,ExpC):-
+    (Loc\= [cell(0,0)=_],
+    append(Instance,PrevL,AllList),
+    \+is_checked(AllList,Loc),
+    constraints(AllList,SqrtN,Loc,Constraints_list,ExplainCons),!,
+    remove_duplicates(Constraints_list,Constraints),!,
+    length(Constraints,N_curr),
+    N is SqrtN**2,
+    N_1 is N-1,
+    find_next_loc(AllList,Loc,NextLoc,N),
+    N_1==N_curr)->                                              
+    (find_assignment(Constraints,N,Loc),
+    ExpC=[ExplainCons->Loc|ResExp],
+    NFound is Found+1,
+    append(PrevL,Loc,NewPrev),
+    Lists=[Loc|ResList],
+    sudoku_propagate_help(sudoku(SqrtN,Instance),NewPrev,ResList,NextLoc,NFound,ResExp));
+    (Loc\= [cell(0,0)=_],
+    append(Instance,PrevL,AllList),
+    N is SqrtN**2,
+    find_next_loc(AllList,Loc,NextLoc,N),
+    sudoku_propagate_help(sudoku(SqrtN,Instance),PrevL,Lists,NextLoc,Found,ExpC)).
+
+%find next free space
+find_next_loc(AllList,[cell(I1,J1)=A1],Loc,N):-
+    J1=:=N,I1=:=N->Loc=[cell(0,0)=_B];         
+    J1=:=N-> NextJ is 1,
+    NextI is I1+1,
+    (\+is_checked(AllList,cell(NextI,NextJ)=_)-> Loc=[cell(NextI,NextJ)=_];
+    (find_next_loc(AllList,[cell(NextI,NextJ)=A1],Loc,N)));   
+    J1<N-> Next is J1+1,
+    (\+is_checked(AllList,[cell(I1,Next)=A1])-> Loc=[cell(I1,Next)=_C];
+    (find_next_loc(AllList,[cell(I1,Next)=_],Loc,N))).
+    
+find_assignment(Constraints,N,[cell(_I2,_J2)=A2]):-
+    numlist(1,N,L),
+    delete_elements(Constraints,L,A2).
+
+delete_elements([X|Constraints],L,A2):-
+    delete(L,X,Res),
+    delete_elements(Constraints,Res,A2).
+delete_elements([],[A2],A2).    
+
+%find the constraints for the current cell   
+constraints([cell(I1,J1)=A1|Res1],SqrtN,[cell(I2,J2)=A2],[A1|Constraints_list],[cell(I1,J1)=A1|ExplainCons]):-
+    (I1==I2;J1==J2;find_box(I1,J1,I2,J2,SqrtN)),           
+    constraints(Res1,SqrtN,[cell(I2,J2)=A2],Constraints_list,ExplainCons).
+
+constraints([],_SqrtN,_Loc,[],[]).
+constraints([cell(I1,J1)=_A1|Res1],SqrtN,[cell(I2,J2)=A2],Constraints_list,ExplainCons):-
+    (I1\=I2,J1\=J2,\+find_box(I1,J1,I2,J2,SqrtN)),        
+    constraints(Res1,SqrtN,[cell(I2,J2)=A2],Constraints_list,ExplainCons).
+
+find_box(I1,J1,RowP,ColP,SqrtN):-
+    find_box_helper(1,SqrtN,RowP,SqrtN,Row_box),
+    find_box_helper(1,SqrtN,ColP,SqrtN,Col_box),
+    member(I1,Row_box),member(J1,Col_box).
+
+find_box_helper(Start,End,I1,SqrtN,Row_box):-
+    (numlist(Start,End,L1),member(I1,L1))->Row_box=L1;
+    NewStart is Start+SqrtN,
+    NewEnd is End+SqrtN,
+    find_box_helper(NewStart,NewEnd,I1,SqrtN,Row_box). 
+
+is_checked([],[_Loc]):-false.
+is_checked([cell(I1,J1)=_A1|_Res1],[cell(I2,J2)=_A2]):-
+    I1==I2,J1==J2.
+is_checked([cell(I1,J1)=_A1|Res1],[cell(I2,J2)=A2]):-
+        (I1\=I2;J1\=J2) -> is_checked(Res1,[cell(I2,J2)=A2]).
+    
+%*****************sudoku_propagate_explain(Instance, Explain)***********************
+sudoku_propagate_explain(sudoku(SqrtN, Hints), Explain):-
+    sudoku_propagate_help(sudoku(SqrtN, Hints),[],_List1,[cell(1,1)=_A],0,Exp),
+    N is SqrtN**2,
+    no_dups_explain(Exp,Explain,N).
+
+%remove duplcates from the explain
+no_dups_explain([],[],_N).
+no_dups_explain([Constraints->Loc|Res1],No_dup_exp,N):-
+    length(Constraints,Len),
+    Len\=N-1,numlist(1,N,NumList),no_dups(Constraints,New_ConsList,NumList),
+    No_dup_exp=[New_ConsList->Loc|Res2],no_dups_explain(Res1,Res2,N). 
+
+no_dups_explain([Constraints->Loc|Res1],No_dup_exp,N):-
+    length(Constraints,Len),
+    Len==N-1,No_dup_exp=[Constraints->Loc|Res2],no_dups_explain(Res1,Res2,N).
+
+no_dups([],[],_).
+no_dups([cell(P1,P2)=A|Constraints],New_ConsList,NumList):-
+    (member(A,NumList)->
+    delete(NumList,A,NewNumlist),
+    New_ConsList =[cell(P1,P2)=A|Res],
+    no_dups(Constraints,Res,NewNumlist));
+    \+member(A,NumList)->no_dups(Constraints,New_ConsList,NumList).    
 
 initiate_board([],_N).
 initiate_board([Row|Rows],N):-
@@ -248,8 +180,8 @@ loop_d(Rows,Count,SqrtN,Board,Count_a,Count_b,Count_c):-
     (nonvar(S)->
     nth0(Rows_i,Rows,Row_rows),
     nth0(Rows_j,Row_rows,S),
-    loop_d(Rows,N_count,SqrtN,Board,Count_a,Count_b,Count);
-    loop_d(Rows,N_count,SqrtN,Board,Count_a,Count_b,Count)).
+    loop_d(Rows,N_count,SqrtN,Board,Count_a,Count_b,Count_c);
+    loop_d(Rows,N_count,SqrtN,Board,Count_a,Count_b,Count_c)).
 
 % Task3 Verify Killer 
 verify_killer(killer(Instance),Solution,Verified):-
@@ -278,13 +210,20 @@ is_sol(Board,Verified):-
 distincts_rows([],_Verified).
 distincts_rows([Row|Rows],Verified):-
     (var(Verified)->
-    (all_diff(Row)->
+    (take_vals(Row,Row_vals),
+    all_diff(Row_vals)->
     distincts_rows(Rows,Verified);
     Row=[A|As],
     find_dup(A,As,Verified));true).
-    
+
+take_vals([A|As],Row_vals):-
+    A=(_,_,Val),
+    (As\=[]->
+    take_vals(As,Rest_vals),
+    append([Val],Rest_vals,Row_vals);
+    Row_vals=[Val]).
 % find_dup(_,[],_):- false.
-find_dup(First,List,Verified):- %TODO
+find_dup(First,List,Verified):- 
     find_dup_loop(First,List,Verified),
     (var(Verified)-> Rest=[Second|Rest], find_dup(Second,Rest,Verified)).
 
@@ -327,7 +266,7 @@ check_knight_moves(Board,I,J,S,Verified):-
     (A1<1;A1>9;B1<1;B1>9->
     true;
     nth1(A1,Board,Row1),
-    nth1(B1,Row1,DR),
+    nth1(B1,Row1,(_,_,DR)),
     (DR\=S-> true; Verified=[cell(I,J)=S, cell(A1,B1)=DR]));true),
     (var(Verified)->
     % Down_left_loc
@@ -336,9 +275,8 @@ check_knight_moves(Board,I,J,S,Verified):-
     (A2<1;A2>9;B2<1;B2>9->
     true;
     nth1(A2,Board,Row2),
-    nth1(B2,Row2,DL),
+    nth1(B2,Row2,(_,_,DL)),
     (DL\=S-> true; Verified=[cell(I,J)=S, cell(A2,B2)=DL]));true),
-
     % Right_down_loc
     (var(Verified)->
     A6 is I+1,
@@ -346,9 +284,8 @@ check_knight_moves(Board,I,J,S,Verified):-
     (A6<1;A6>9;B6<1;B6>9->
     true;
     nth1(A6,Board,Row6),
-    nth1(B6,Row6,RD),
+    nth1(B6,Row6,(_,_,RD)),
     (RD\=S-> true; Verified=[cell(I,J)=S, cell(A6,B6)=RD]));true),
-    
     % Left_down_loc
     (var(Verified)->
     A8 is I+1,
@@ -356,45 +293,8 @@ check_knight_moves(Board,I,J,S,Verified):-
     (A8<1;A8>9;B8<1;B8>9->
     true;
     nth1(A8,Board,Row8),
-    nth1(B8,Row8,LD),
+    nth1(B8,Row8,(_,_,LD)),
     (LD\=S-> true; Verified=[cell(I,J)=S, cell(A8,B8)=LD]));true).
-
-        % Up_right_loc
-    % (var(Verified)->
-    % A3 is I-2,
-    % B3 is J+1,
-    % (A3<1;A3>9;B3<1;B3>9->
-    % true;
-    % nth1(A3,Board,Row3),
-    % nth1(B3,Row3,UR),
-    % (UR\=S-> true; Verified=[cell(I,J)=S, cell(A3,B3)=UR]));true),
-    % Up_left_loc
-    % (var(Verified)->
-    % A4 is I-2,
-    % B4 is J-1,
-    % (A4<1;A4>9;B4<1;B4>9->
-    % true;
-    % nth1(A4,Board,Row4),
-    % nth1(B4,Row4,UL),
-    % (UL\=S-> true; Verified=[cell(I,J)=S, cell(A4,B4)=UL]));true),
-    % Right_up_loc
-    % (var(Verified)->
-    % A5 is I-1,
-    % B5 is J+2,
-    % (A5<1;A5>9;B5<1;B5>9->
-    % true;
-    % nth1(A5,Board,Row5),
-    % nth1(B5,Row5,RU),
-    % (RU\=S-> true; Verified=[cell(I,J)=S, cell(A5,B5)=RU]));true),
-    % Left_up_loc
-    % (var(Verified)->
-    % A7 is I-1,
-    % B7 is J-2,
-    % (A7<1;A7>9;B7<1;B7>9->
-    % true;
-    % nth1(A7,Board,Row7),
-    % nth1(B7,Row7,LU),
-    % (LU\=S-> true; Verified=[cell(I,J)=S, cell(A7,B7)=LU]));true),
 
 check_king_moves(Board,I,J,S,Verified):-
     % Right_down_loc
@@ -404,7 +304,7 @@ check_king_moves(Board,I,J,S,Verified):-
     (A6<1;A6>9;B6<1;B6>9->
     true;
     nth1(A6,Board,Row6),
-    nth1(B6,Row6,RD),
+    nth1(B6,Row6,(_,_,RD)),
     (RD\=S-> true; Verified=[cell(I,J)=S, cell(A6,B6)=RD]));true),
     % Left_down_loc
     (var(Verified)->
@@ -413,66 +313,9 @@ check_king_moves(Board,I,J,S,Verified):-
     (A8<1;A8>9;B8<1;B8>9->
     true;
     nth1(A8,Board,Row8),
-    nth1(B8,Row8,LD),
+    nth1(B8,Row8,(_,_,LD)),
     (LD\=S-> true; Verified=[cell(I,J)=S, cell(A8,B8)=LD]));true).
 
-    %Down_loc
-    % (var(Verified)->
-    % A1 is I+1,
-    % B1 is J,
-    % (A1<1;A1>9;B1<1;B1>9->
-    % true;
-    % nth1(A1,Board,Row1),
-    % nth1(B1,Row1,D),
-    % (D\=S-> true; Verified=[cell(I,J)=S, cell(A1,B2)=D]));true),
-    % % Left_loc
-    % (var(Verified)->
-    % A2 is I,
-    % B2 is J-1,
-    % (A2<1;A2>9;B2<1;B2>9->
-    % true;
-    % nth1(A2,Board,Row2),
-    % nth1(B2,Row2,L),
-    % (L\=S-> true; Verified=[cell(I,J)=S, cell(A2,B2)=L]));true),
-    % % Right_loc
-    % (var(Verified)->
-    % A3 is I,
-    % B3 is J+1,
-    % (A3<1;A3>9;B3<1;B3>9->
-    % true;
-    % nth1(A3,Board,Row3),
-    % nth1(B3,Row3,R),
-    % (R\=S-> true; Verified=[cell(I,J)=S, cell(A3,B3)=R]));true),
-    % % Up_loc
-    % (var(Verified)->
-    % A4 is I-1,
-    % B4 is J,
-    % (A4<1;A4>9;B4<1;B4>9->
-    % true;
-    % nth1(A4,Board,Row4),
-    % nth1(B4,Row4,Up),
-    % (Up\=S-> true; Verified=[cell(I,J)=S, cell(A4,B4)=Up]));true),
-
-    % Left_up_loc
-    % (var(Verified)->
-    % A7 is I-1,
-    % B7 is J-1,
-    % (A7<1;A7>9;B7<1;B7>9->
-    % true;
-    % nth1(A7,Board,Row7),
-    % nth1(B7,Row7,LU),
-    % (LU\=S-> true; Verified=[cell(I,J)=S, cell(A7,B7)=LU]));true),
-
-    % Right_up_loc
-    % (var(Verified)->
-    % A5 is I-1,
-    % B5 is J+1,
-    % (A5<1;A5>9;B5<1;B5>9->
-    % true;
-    % nth1(A5,Board,Row5),
-    % nth1(B5,Row5,RU),
-    % (RU\=S-> true; Verified=[cell(I,J)=S, cell(A5,B5)=RU]));true),
-    
 check_diff(Board,I,J,S,Verified):-
     %Down_loc
     (var(Verified)->
@@ -481,7 +324,7 @@ check_diff(Board,I,J,S,Verified):-
     (A1<1;A1>9;B1<1;B1>9->
     true;
     nth1(A1,Board,Row1),
-    nth1(B1,Row1,D),
+    nth1(B1,Row1,(_,_,D)),
     Diff1 is abs(D-S),
     (Diff1>1->true; Verified=[cell(I,J)=S, cell(A1,B1)=Diff1]));true),
     % Left_loc
@@ -491,7 +334,7 @@ check_diff(Board,I,J,S,Verified):-
     (A2<1;A2>9;B2<1;B2>9->
     true;
     nth1(A2,Board,Row2),
-    nth1(B2,Row2,L),
+    nth1(B2,Row2,(_,_,L)),
     Diff2 is abs(L-S),
     (Diff2>1->true; Verified=[cell(I,J)=S, cell(A2,B2)=Diff2]));true),
     % Right_loc
@@ -501,7 +344,7 @@ check_diff(Board,I,J,S,Verified):-
     (A3<1;A3>9;B3<1;B3>9->
     true;
     nth1(A3,Board,Row3),
-    nth1(B3,Row3,R),
+    nth1(B3,Row3,(_,_,R)),
     Diff3 is abs(R-S),
     (Diff3>1->true; Verified=[cell(I,J)=S, cell(A3,B3)=Diff3]));true),
     % Up_loc
@@ -511,7 +354,7 @@ check_diff(Board,I,J,S,Verified):-
     (A4<1;A4>9;B4<1;B4>9->
     true;
     nth1(A4,Board,Row4),
-    nth1(B4,Row4,Up),
+    nth1(B4,Row4,(_,_,Up)),
     Diff4 is abs(Up-S),
     (Diff4>1->true; Verified=[cell(I,J)=S, cell(A4,B4)=Diff4]));true).
 
@@ -574,15 +417,39 @@ cnf(Board,CNF):-
     cnf_rows_loop(Blocks,1,CNF4),
     append(CNF3,CNF4,CNF5),
     killer_moves_loop1(Board,1,9,CNF6),
-    append(CNF5,CNF6,CNF).
+    append(CNF5,CNF6,CNF7),
+    exactly_one_in_cell(Board,CNF8),
+    append(CNF7,CNF8,CNF).
+
+exactly_one_in_cell([],[]).
+exactly_one_in_cell([Row|Rows],CNF):-
+    exactly_one_in_cell2(Row,CNF1),
+    exactly_one_in_cell(Rows,CNF2),
+    append(CNF1,CNF2,CNF).
+exactly_one_in_cell2([],[]).
+exactly_one_in_cell2([Cell|Cells],CNF):-
+    exactly_one(Cell,CNF1),
+    exactly_one_in_cell2(Cells,CNF2),
+    append(CNF1,CNF2,CNF).
 
 cnf_rows_loop([Row],9,CNF):- take_nth_bit(Row,9,List), exactly_one(List,CNF).
-cnf_rows_loop([Row|Rows],Count,CNF):-
+cnf_rows_loop([Row],Count,CNF):- 
     Count<9,
     take_nth_bit(Row,Count,List),
     exactly_one(List,CNF1),
     N_count is Count+1,
-    cnf_rows_loop(Rows,N_count,CNF2),
+    cnf_rows_loop([Row],N_count,CNF2),
+    append(CNF1,CNF2,CNF).
+cnf_rows_loop([Row|Rows],Count,CNF):-
+    Count<9->
+    take_nth_bit(Row,Count,List),
+    exactly_one(List,CNF1),
+    N_count is Count+1,
+    cnf_rows_loop([Row|Rows],N_count,CNF2),
+    append(CNF1,CNF2,CNF);
+    take_nth_bit(Row,Count,List),
+    exactly_one(List,CNF1),
+    cnf_rows_loop(Rows,1,CNF2),
     append(CNF1,CNF2,CNF).
 
 killer_moves_loop1(Board,Size,Size,CNF):-killer_moves_loop2(Board,Size,1,Size,CNF).
@@ -615,7 +482,7 @@ knight_moves_cnf(Board,I,J,Val,CNF):-
     CNF1=[];
     nth1(A1,Board,Row1),
     nth1(B1,Row1,DR),
-    compare_numbers(Val,DR,CNF1);true),
+    compare_numbers(Val,DR,CNF1)),
     % Down_left_loc
     A2 is I+2,
     B2 is J-1,
@@ -623,7 +490,7 @@ knight_moves_cnf(Board,I,J,Val,CNF):-
     CNF2=[];
     nth1(A2,Board,Row2),
     nth1(B2,Row2,DL),
-    compare_numbers(Val,DL,CNF2);true),
+    compare_numbers(Val,DL,CNF2)),
     % Right_down_loc
     A6 is I+1,
     B6 is J+2,
@@ -631,7 +498,7 @@ knight_moves_cnf(Board,I,J,Val,CNF):-
     CNF3=[];
     nth1(A6,Board,Row6),
     nth1(B6,Row6,RD),
-    compare_numbers(Val,RD,CNF3);true),
+    compare_numbers(Val,RD,CNF3)),
     % Left_down_loc
     A8 is I+1,
     B8 is J-2,
@@ -639,7 +506,7 @@ knight_moves_cnf(Board,I,J,Val,CNF):-
     CNF4=[];
     nth1(A8,Board,Row8),
     nth1(B8,Row8,LD),
-    compare_numbers(Val,LD,CNF4);true),
+    compare_numbers(Val,LD,CNF4)),
     %combining formulas
     append(CNF1,CNF2,CNF5),
     append(CNF5,CNF3,CNF6),
@@ -653,7 +520,7 @@ king_moves_cnf(Board,I,J,Val,CNF):-
     CNF1=[];
     nth1(A6,Board,Row6),
     nth1(B6,Row6,RD),
-    compare_numbers(Val,RD,CNF1);true),
+    compare_numbers(Val,RD,CNF1)),
     % Left_down_loc
     A8 is I+1,
     B8 is J-1,
@@ -661,7 +528,7 @@ king_moves_cnf(Board,I,J,Val,CNF):-
     CNF2=[];
     nth1(A8,Board,Row8),
     nth1(B8,Row8,LD),
-    compare_numbers(Val,LD,CNF2);true),
+    compare_numbers(Val,LD,CNF2)),
     append(CNF1,CNF2,CNF).
 
 check_diff_cnf(Board,I,J,Val,CNF):-
@@ -672,7 +539,7 @@ check_diff_cnf(Board,I,J,Val,CNF):-
     true;
     nth1(A1,Board,Row1),
     nth1(B1,Row1,D),
-    not_consecutives(Val,D,CNF1);true),
+    not_consecutives(Val,D,CNF1)),
     % Right_loc
     A2 is I,
     B2 is J+1,
@@ -680,40 +547,18 @@ check_diff_cnf(Board,I,J,Val,CNF):-
     true;
     nth1(A2,Board,Row3),
     nth1(B2,Row3,R),
-    not_consecutives(Val,R,CNF2);true),
+    not_consecutives(Val,R,CNF2)),
     append(CNF1,CNF2,CNF).
-    
-    % % Left_loc
-    % (var(Verified)->
-    % A2 is I,
-    % B2 is J-1,
-    % (A2<1;A2>9;B2<1;B2>9->
-    % true;
-    % nth1(A2,Board,Row2),
-    % nth1(B2,Row2,L),
-    % Diff2 is abs(L-S),
-    % (;true),
-    % Right_loc
-    % % Up_loc
-    % (var(Verified)->
-    % A4 is I-1,
-    % B4 is J,
-    % (A4<1;A4>9;B4<1;B4>9->
-    % true;
-    % nth1(A4,Board,Row4),
-    % nth1(B4,Row4,Up),
-    % Diff4 is abs(Up-S),
-    % (Diff4>1->true; Verified=[cell(I,J)=S, cell(A4,B4)=Diff4]));true).
 
+not_consecutives([_A],[_B],[]).
 not_consecutives([A1,A2|As],[B1,B2|Bs],CNF):-
     CNF1=[[-A1,-B2],[-A2,-B1]],
     not_consecutives([A2|As],[B2|Bs],CNF2),
     append(CNF1,CNF2,CNF).
-exactly_one(List,Formula):-
-    % atleast_one(List,CNF1),
-    atmost_one(List,CNF2),
-    append([List],CNF2,Formula).
-% atleast_one(List,[List]).
+
+exactly_one(List,CNF):-
+    atmost_one(List,CNF1),
+    append([List],CNF1,CNF).
 % atmost_one([B],[]).                 % last cell doesn't matter
 atmost_one([A|As],CNF):-
     length(As,N),
@@ -741,4 +586,74 @@ take_nth_bit([Row|Rows],N,List):-
     take_nth_bit(Rows,N,List1),
     append([Element],List1,List).
 
+%*************************solve_killer(Instance, Solution)************
 
+solve_killer(Instance,Solution) :-
+    encode_killer(Instance,Map,CNF),
+    sat(CNF),
+    decode_killer(Map, Solution),
+    verify_killer(Instance, Solution, Verified),Verified = killer.
+
+decode_killer([],[]).
+decode_killer([cell(I,J)=A|Res_map], [cell(I,J)=B|Solution]):-
+    nth1(B,A,1),
+    % ((A==[1,-1,-1,-1,-1,-1,-1,-1,-1])->B=1;
+    % (A==[-1,1,-1,-1,-1,-1,-1,-1,-1])->B=2;
+    % (A==[-1,-1,1,-1,-1,-1,-1,-1,-1])->B=3;
+    % (A==[-1,-1,-1,1,-1,-1,-1,-1,-1])->B=4;
+    % (A==[-1,-1,-1,-1,1,-1,-1,-1,-1])->B=5;
+    % (A==[-1,-1,-1,-1,-1,1,-1,-1,-1])->B=6;
+    % (A==[-1,-1,-1,-1,-1,-1,1,-1,-1])->B=7;
+    % (A==[-1,-1,-1,-1,-1,-1,-1,1,-1])->B=8;
+    % (A==[-1,-1,-1,-1,-1,-1,-1,-1,1])->B=9),
+    decode_killer(Res_map,Solution).
+
+%********************legal_killer(Instance, IsLegal)*****************
+legal_killer(Instance, IsLegal):-
+    solve_killer(Instance,Sol1),
+    encode_killer(Instance,MapSec,CNF),
+    add_constraints(MapSec,Sol1,NewCNF),
+    append(CNF,[NewCNF],CNF2),
+    check(Instance,MapSec,CNF2,Sol1,IsLegal).
+
+%check if the second result is kiiler sudoku constraints
+check(Instance,MapSec,CNF2,Sol1,IsLegal):-
+        % sat(CNF2),
+        (\+solve_killer(Instance,SecSol)->IsLegal=legal,true;
+        decode_killer(MapSec,SecSol),
+        find_other_assignment(Sol1,SecSol,IsLegal)).
+
+check(_,_MapSec,CNF2,_FirstSolution,IsLegal):-
+        % \+(sat(CNF2)),
+        IsLegal=legal.    
+
+ %find double assighnment
+find_other_assignment([cell(I,J)=Val|Sol1],[cell(I,J)=Sol|SecondSolution],IsLegal):-
+    ((Val==Sol)->find_other_assignment(Sol1,SecondSolution,IsLegal),true;
+    IsLegal=[cell(I,J)=Val,cell(I,J)=Sol]).
+
+%add constraints that the the solution be diffrent from the first solution
+add_constraints([],[],[]).
+add_constraints([cell(I,J)=Val|Map],[cell(I,J)=Sol|Sol1],NewCNF):-
+    Place_Sol is Sol-1,
+    % match(Val,Place_Sol,Ind),
+    nth1(Ind,Place_Sol,Val),
+    (var(Ind)->NewCNF=[-Ind|ResCnf],add_constraints(Map,Sol1,ResCnf),true;
+    add_constraints(Map,Sol1,NewCNF)).
+
+%*********************generate_killer(K, Hints)*********************
+generate_killer(K, Hints):-
+    gen_hints(K,[],Hints),legal_killer(killer(Hints), IsLegal),IsLegal = legal.
+
+gen_hints(0,_,[]).
+gen_hints(K,Prev,[cell(I,J)=Val|Hints]):-
+    K>0,
+    between(1,9,I),between(1,9,J),between(1,9,Val),
+    \+memberchk([I,J],Prev),
+    NewK is K-1,
+    append(Prev,[[I,J]],Nprev),
+    gen_hints(NewK,Nprev,Hints).
+
+lists_firsts_rests([], [], []).
+lists_firsts_rests([[F|Os]|Rest], [F|Fs], [Os|Oss]) :-
+        lists_firsts_rests(Rest, Fs, Oss).
