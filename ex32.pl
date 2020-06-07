@@ -418,19 +418,27 @@ exactly_one_in_cell([Row|Rows],CNF):-
     append(CNF1,CNF2,CNF).
 exactly_one_in_cell2([],[]).
 exactly_one_in_cell2([Cell|Cells],CNF):-
-    exactly_one(Cell,TCNF1),
-    append(TCNF1,CNF1),
+    exactly_one(Cell,CNF1),
     exactly_one_in_cell2(Cells,CNF2),
     append(CNF1,CNF2,CNF).
 
-cnf_rows_loop([Row],9,CNF):- take_nth_bit(Row,9,List), exactly_one(List,TCNF), append(TCNF,CNF).
-cnf_rows_loop([Row|Rows],Count,CNF):-
-    Count<9,
+cnf_rows_loop([Row],9,CNF):- take_nth_bit(Row,9,List), exactly_one(List,CNF).
+cnf_rows_loop([Row],Count,CNF):- 
     take_nth_bit(Row,Count,List),
-    exactly_one(List,TCNF1),
-    append(TCNF1,CNF1),
+    exactly_one(List,CNF1),
     N_count is Count+1,
-    cnf_rows_loop(Rows,N_count,CNF2),
+    cnf_rows_loop([Row],N_count,CNF2),
+    append(CNF1,CNF2,CNF).
+cnf_rows_loop([Row|Rows],Count,CNF):-
+    Count<9->
+    take_nth_bit(Row,Count,List),
+    exactly_one(List,CNF1),
+    N_count is Count+1,
+    cnf_rows_loop([Row|Rows],N_count,CNF2),
+    append(CNF1,CNF2,CNF);
+    take_nth_bit(Row,Count,List),
+    exactly_one(List,CNF1),
+    cnf_rows_loop(Rows,1,CNF2),
     append(CNF1,CNF2,CNF).
 
 killer_moves_loop1(Board,Size,Size,CNF):-killer_moves_loop2(Board,Size,1,Size,CNF).
@@ -537,23 +545,23 @@ not_consecutives([A1,A2|As],[B1,B2|Bs],CNF):-
     not_consecutives([A2|As],[B2|Bs],CNF2),
     append(CNF1,CNF2,CNF).
 
-% exactly_one(List,CNF):-
-%     atmost_one(List,CNF1),
-%     append([List],CNF1,CNF).
-% % atmost_one([B],[]).                 % last cell doesn't matter
-% atmost_one([A|As],CNF):-
-%     length(As,N),
-%     N>0,
-%     (N>1->
-%     atmost_one_loop(A,As,CNF1),
-%     atmost_one(As,CNF2),
-%     append(CNF1,CNF2,CNF);atmost_one_loop(A,As,CNF)).
+exactly_one(List,CNF):-
+    atmost_one(List,CNF1),
+    append([List],CNF1,CNF).
+% atmost_one([B],[]).                 % last cell doesn't matter
+atmost_one([A|As],CNF):-
+    length(As,N),
+    N>0,
+    (N>1->
+    atmost_one_loop(A,As,CNF1),
+    atmost_one(As,CNF2),
+    append(CNF1,CNF2,CNF);atmost_one_loop(A,As,CNF)).
 
-% atmost_one_loop(A,[B|Bs],CNF):-
-%     CNF1 = [[-A,-B]], 
-%     (Bs\=[]->
-%     atmost_one_loop(A,Bs,CNF2),
-%     append(CNF1,CNF2,CNF);CNF=CNF1).
+atmost_one_loop(A,[B|Bs],CNF):-
+    CNF1 = [[-A,-B]], 
+    (Bs\=[]->
+    atmost_one_loop(A,Bs,CNF2),
+    append(CNF1,CNF2,CNF);CNF=CNF1).
 
 % exactly_one([],[]).
 % exactly_one([cell(_I,_J)=A|Map],[CNF,[A]|ResCnf]):-
@@ -561,14 +569,13 @@ not_consecutives([A1,A2|As],[B1,B2|Bs],CNF):-
 %     append(Cnf1,CNF),
 %     exactly_one(Map,ResCnf).
 
-exactly_one([_],[]).
-exactly_one([A|Other],[Cnf1|ResCnf]):-
-    exactly_one2(A,Other,Cnf1),
-    exactly_one(Other,ResCnf).
+% exactly_one1([_],[]).
+% exactly_one1([A|Other],[Cnf1|ResCnf]):-
+%     exactly_one2(A,Other,Cnf1),
+%     exactly_one1(Other,ResCnf).
 
-exactly_one2(_A,[],[]).
-exactly_one2(A,[B|Other],[[-A,-B]|CNF]):-exactly_one2(A,Other,CNF).
-
+% exactly_one2(_A,[],[]).
+% exactly_one2(A,[B|Other],[[-A,-B]|CNF]):-exactly_one2(A,Other,CNF).
 compare_numbers([Bit1],[Bit2],[[-Bit1,-Bit2]]).
 compare_numbers([Bit1|Bits1],[Bit2|Bits2],CNF):-
     CNF1 =[[-Bit1,-Bit2]],
